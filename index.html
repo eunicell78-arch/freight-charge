@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>항공/해상 수입 운임 견적 계산기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; background:#f5f7fb; color:#1f2937; line-height:1.5; }
+    .wrap { max-width:1160px; margin:0 auto; padding:24px 16px 60px; }
+    .hero { background:linear-gradient(135deg,#dff3ff,#fff); border:1px solid #d7e7f3; border-radius:22px; padding:24px; box-shadow:0 12px 30px rgba(15,23,42,.06); margin-bottom:18px; }
+    h1 { margin:0 0 8px; font-size:28px; letter-spacing:-.03em; }
+    .sub { margin:0; color:#64748b; font-size:15px; }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:18px; box-shadow:0 8px 22px rgba(15,23,42,.04); }
+    .col-4{grid-column:span 4}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
+    label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#334155}
+    input,select,textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;font-size:15px;background:#fff;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.18)}
+    .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .muted{color:#64748b;font-size:12px;margin-top:8px}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:700}
+    .result{background:#0f172a;color:#fff;border-radius:20px;padding:22px;position:sticky;top:16px}.result h2{margin:0 0 12px;font-size:18px}.total{font-size:34px;font-weight:800;letter-spacing:-.04em;margin:6px 0 2px}.perkg{color:#bae6fd;font-size:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;vertical-align:middle}th:first-child,td:first-child{text-align:left}th{color:#475569;background:#f8fafc;font-weight:800}.result table th,.result table td{border-bottom:1px solid rgba(255,255,255,.14);color:#e2e8f0}.result table th{background:rgba(255,255,255,.06);color:#bae6fd}
+    .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.section-title h2{margin:0;font-size:18px}.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}button{border:0;padding:11px 14px;border-radius:12px;font-weight:800;cursor:pointer;background:#0284c7;color:#fff}button.secondary{background:#e2e8f0;color:#0f172a}.small-input{max-width:110px;padding:8px;font-size:13px}.selected{background:#ecfeff;font-weight:800}.note{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:14px;padding:12px;margin-top:12px;font-size:13px}.hide{display:none}
+    @media(max-width:900px){.col-4,.col-8{grid-column:span 12}.row3,.row4{grid-template-columns:1fr}.result{position:static}h1{font-size:23px}.total{font-size:28px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <h1>항공 / 해상 수입 운임 견적 계산기</h1>
+    <p class="sub">DACHSER 최신 견적서 기준으로 홍콩·중국·대만 항공 및 홍콩·중국 해상 LCL 운임을 자동 계산합니다.</p>
+  </section>
+
+  <div class="grid">
+    <div class="card col-8">
+      <div class="section-title"><h2>기본 입력</h2><span class="pill" id="currencyPill">Air / TWD</span></div>
+      <div class="row3">
+        <div><label>운송 방식</label><select id="modeSelect" onchange="renderRouteOptions()"><option value="air">항공 Air</option><option value="sea">해상 LCL</option></select></div>
+        <div><label>출발지 / Route</label><select id="routeSelect" onchange="applyRoutePreset()"></select></div>
+        <div><label id="exchangeLabel">TWD → KRW 환율</label><input id="exchangeRate" type="number" value="43" min="0" step="0.01"></div>
+      </div>
+      <div class="row4" style="margin-top:12px">
+        <div id="weightBox"><label>Chargeable Weight (kg)</label><input id="weight" type="number" value="10" min="0" step="0.01"></div>
+        <div id="cbmBox" class="hide"><label>CBM</label><input id="cbm" type="number" value="1" min="0" step="0.01"></div>
+        <div id="wmBox" class="hide"><label>W/M</label><input id="wm" type="number" value="1" min="0" step="0.01"></div>
+        <div id="dutyTaxBox" class="hide"><label>관부가세 대납 금액 (KRW)</label><input id="dutyTax" type="number" value="0" min="0" step="1"></div>
+        <div><label>기타 비용 / Delivery 등 (KRW)</label><input id="extraKrw" type="number" value="0" min="0" step="1"></div>
+      </div>
+      <div class="note" id="guideNote">항공은 무게 구간별 운임+FSC+SSC를 자동 적용합니다.</div>
+    </div>
+
+    <div class="col-4">
+      <div class="result">
+        <h2>예상 총 비용</h2>
+        <div class="total" id="grandTotal">₩0</div>
+        <div class="perkg" id="unitTotal">kg당 ₩0</div>
+        <table style="margin-top:16px"><tbody>
+          <tr><th>Origin</th><td id="originSum">₩0</td></tr>
+          <tr><th id="freightLabel">Airfreight</th><td id="freightSum">₩0</td></tr>
+          <tr><th>Destination</th><td id="destSum">₩0</td></tr>
+          <tr><th>기타</th><td id="extraSum">₩0</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <div class="card col-12" id="airSection">
+      <div class="section-title"><h2>Airfreight Charges</h2><span class="muted">무게 기준 자동 구간 선택</span></div>
+      <table><thead><tr><th>구간</th><th>적용 기준</th><th>운임 + FSC + SSC 단가</th><th>적용 여부</th></tr></thead><tbody id="airRateTable"></tbody></table>
+      <p class="muted">예: 32kg = -45, 78kg = +45, 120kg = +100</p>
+    </div>
+
+    <div class="card col-12 hide" id="seaSection">
+      <div class="section-title"><h2>Seafreight LCL Charges</h2><span class="muted">CBM 기준 자동 계산</span></div>
+      <table><thead><tr><th>항목</th><th>계산</th><th>USD</th><th>KRW</th></tr></thead><tbody id="seaFreightTable"></tbody></table>
+    </div>
+
+    <div class="card col-12">
+      <div class="section-title"><h2 id="originTitle">Origin Charges</h2><button class="secondary" onclick="resetPreset()">기본값 복원</button></div>
+      <table><thead><tr><th>항목</th><th>계산</th><th id="originCurrencyHead">외화</th><th>KRW</th></tr></thead><tbody id="originTable"></tbody></table>
+    </div>
+
+    <div class="card col-12">
+      <div class="section-title"><h2>Destination Charges - KRW</h2><span class="muted">국내 도착지 비용</span></div>
+      <table><thead><tr><th>항목</th><th>계산</th><th>KRW</th></tr></thead><tbody id="destTable"></tbody></table>
+    </div>
+
+    <div class="card col-12">
+      <h2 style="margin-top:0;font-size:18px">견적 메모</h2>
+      <textarea id="memo" style="min-height:110px" placeholder="고객명, 품목, 수량, 견적 조건 등을 입력하세요."></textarea>
+      <div class="btns"><button onclick="window.print()">인쇄 / PDF 저장</button><button class="secondary" onclick="copySummary()">요약 복사</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const airPresets={
+  TPE_OZ:{label:'대만 TPE-ICN (OZ)',currency:'TWD',exchange:43,minimum:1512,air:[0,0,33,14,14,13,12],fsc:[0,28,28,28,28,28,28],origin:[{name:'Origin Handling',type:'perkg_min',rate:6,min:650},{name:'AWB Charge',type:'fixed',rate:300},{name:'Cargo Screening',type:'perkg',rate:2},{name:'Documentation Fee',type:'fixed',rate:1000},{name:'Communication Fee',type:'fixed',rate:360},{name:'Terminal Handling',type:'fixed',rate:300}]},
+  TPE_SQ:{label:'대만 TPE-ICN (SQ)',currency:'TWD',exchange:43,minimum:0,air:[0,0,60,28,28,27,22],fsc:[0,13,13,13,13,13,13],origin:[{name:'Origin Handling',type:'perkg_min',rate:6,min:650},{name:'AWB Charge',type:'fixed',rate:300},{name:'Cargo Screening',type:'perkg',rate:2},{name:'Documentation Fee',type:'fixed',rate:1000},{name:'Communication Fee',type:'fixed',rate:360},{name:'Terminal Handling',type:'fixed',rate:300}]},
+  HKG:{label:'홍콩 HKG-ICN',currency:'HKD',exchange:178,minimum:823,air:[823,823,18.5,18.5,18.5,18.5,18.5],fsc:[4.6,4.6,4.6,4.6,4.6,4.6,4.6],ssc:[1.8,1.8,1.8,1.8,1.8,1.8,1.8],origin:[{name:'THC',type:'perkg_min',rate:3,min:480},{name:'Documentation',type:'fixed',rate:150},{name:'Gate Charge',type:'fixed',rate:200},{name:'Cargo Screening',type:'perkg_min',rate:1,min:25}]},
+  PVG_STANDARD:{label:'중국 PVG-ICN Standard',currency:'CNY',exchange:190,minimum:270,air:[270,11,11,11,11,11,11],origin:[]},
+  PVG_B2B:{label:'중국 PVG-ICN B2B 긴급',currency:'CNY',exchange:190,minimum:1200,air:[1200,38,29,29,28,27,27],origin:[]}
+};
+const seaPresets={
+  CNSZX:{label:'중국 Shenzhen CNSZX-KRINC LCL',originCurrency:'CNY',originExchange:190,freightCurrency:'USD',freightExchange:1380,origin:[],sea:[{name:'Seafreight LCL',type:'percbm_min',rate:20,min:20},{name:'Bunker',type:'percbm_min',rate:6,min:6},{name:'Extraordinary Bunker Surcharge',type:'percbm_min',rate:5,min:5}],destType:'sea'},
+  HKHKG:{label:'홍콩 HKHKG-KRINC LCL',originCurrency:'HKD',originExchange:178,freightCurrency:'USD',freightExchange:1380,origin:[{name:'LCL Service charge (THC, CFS, Wharfage, Seal)',type:'perwm_min',rate:140,min:140},{name:'Port security fee',type:'fixed',rate:100},{name:'Export Handling',type:'fixed',rate:400},{name:'Documentation fee',type:'fixed',rate:400},{name:'VGM administration fee',type:'fixed',rate:80},{name:'Express B/L fee',type:'fixed_optional',rate:400},{name:'Telex release fee',type:'fixed',rate:80}],sea:[{name:'Seafreight LCL',type:'percbm_min',rate:15,min:15},{name:'Bunker',type:'percbm_min',rate:6,min:6},{name:'Extraordinary Bunker Surcharge',type:'percbm_min',rate:5,min:5}],destType:'sea'}
+};
+let mode='air', currentCurrency='TWD', freightCurrency='TWD', originItems=[], seaItems=[];
+const airBrackets=[{label:'Minimum',rule:'최소 운임',rate:0},{label:'-45',rule:'45kg 미만',rate:0},{label:'+45',rule:'45kg 이상 ~ 100kg 미만',rate:0},{label:'+100',rule:'100kg 이상 ~ 300kg 미만',rate:0},{label:'+300',rule:'300kg 이상 ~ 500kg 미만',rate:0},{label:'+500',rule:'500kg 이상 ~ 1000kg 미만',rate:0},{label:'+1,000',rule:'1000kg 이상',rate:0}];
+function won(n){return '₩'+Math.round(n||0).toLocaleString('ko-KR')}
+function money(n,c){return c+' '+(Math.round((n||0)*100)/100).toLocaleString('ko-KR')}
+function calcItem(item,qty){if(item.type==='fixed'||item.type==='fixed_optional')return item.rate;if(item.type==='perkg')return item.rate*qty;if(item.type==='perkg_min'||item.type==='percbm_min'||item.type==='perwm_min')return Math.max(item.rate*qty,item.min||0);return 0}
+function getAirBracket(w){if(w<45)return airBrackets[1]; if(w<100)return airBrackets[2]; if(w<300)return airBrackets[3]; if(w<500)return airBrackets[4]; if(w<1000)return airBrackets[5]; return airBrackets[6]}
+function renderRouteOptions(){mode=document.getElementById('modeSelect').value; const sel=document.getElementById('routeSelect'); sel.innerHTML=''; const data=mode==='air'?airPresets:seaPresets; Object.keys(data).forEach(k=>{const o=document.createElement('option'); o.value=k; o.textContent=data[k].label; sel.appendChild(o)}); applyRoutePreset()}
+function applyRoutePreset(){mode=document.getElementById('modeSelect').value; const key=document.getElementById('routeSelect').value; if(mode==='air'){applyAir(airPresets[key])}else{applySea(seaPresets[key])}}
+function applyAir(p){currentCurrency=p.currency; freightCurrency=p.currency; document.getElementById('exchangeRate').value=p.exchange; document.getElementById('exchangeLabel').textContent=currentCurrency+' → KRW 환율'; document.getElementById('currencyPill').textContent='Air / '+currentCurrency; document.getElementById('guideNote').textContent='항공은 무게 구간별 운임+FSC+SSC를 자동 적용합니다.'; document.getElementById('airSection').classList.remove('hide'); document.getElementById('seaSection').classList.add('hide'); document.getElementById('weightBox').classList.remove('hide'); document.getElementById('cbmBox').classList.add('hide'); document.getElementById('wmBox').classList.add('hide'); document.getElementById('dutyTaxBox').classList.add('hide'); document.getElementById('freightLabel').textContent='Airfreight'; document.getElementById('originTitle').textContent='Origin Charges - '+currentCurrency; document.getElementById('originCurrencyHead').textContent=currentCurrency; originItems=JSON.parse(JSON.stringify(p.origin||[])); airBrackets[0].rate=p.minimum||0; for(let i=1;i<airBrackets.length;i++){airBrackets[i].rate=((p.air&&p.air[i])||0)+((p.fsc&&p.fsc[i])||0)+((p.ssc&&p.ssc[i])||0)} renderAirRates(); renderOrigin(); renderDestAir(); calculate()}
+function applySea(p){currentCurrency=p.originCurrency; freightCurrency=p.freightCurrency; document.getElementById('exchangeRate').value=p.originExchange; document.getElementById('exchangeLabel').textContent=currentCurrency+' → KRW 환율'; document.getElementById('currencyPill').textContent='Sea LCL / '+currentCurrency+' + USD'; document.getElementById('guideNote').textContent='해상 LCL은 Origin은 현지통화, 해상운임은 USD/CBM, Destination은 KRW 기준입니다. USD 환율은 해상운임 표에서 수정 가능합니다.'; document.getElementById('airSection').classList.add('hide'); document.getElementById('seaSection').classList.remove('hide'); document.getElementById('weightBox').classList.add('hide'); document.getElementById('cbmBox').classList.remove('hide'); document.getElementById('wmBox').classList.remove('hide'); document.getElementById('dutyTaxBox').classList.remove('hide'); document.getElementById('freightLabel').textContent='Seafreight'; document.getElementById('originTitle').textContent='Origin Charges - '+currentCurrency; document.getElementById('originCurrencyHead').textContent=currentCurrency; originItems=JSON.parse(JSON.stringify(p.origin||[])); seaItems=JSON.parse(JSON.stringify(p.sea||[])); renderSeaFreight(p.freightExchange); renderOrigin(); renderDestSea(); calculate()}
+function renderAirRates(){const tb=document.getElementById('airRateTable'); tb.innerHTML=''; airBrackets.forEach((b,i)=>{const tr=document.createElement('tr'); tr.id='airRow'+i; tr.innerHTML='<td>'+b.label+'</td><td>'+b.rule+'</td><td><input class="small-input" type="number" value="'+b.rate+'" min="0" step="0.01" onchange="updateAirRate('+i+',this.value)"> '+freightCurrency+'/kg</td><td id="airSelected'+i+'"></td>'; tb.appendChild(tr)})}
+function renderSeaFreight(defaultUsd){const tb=document.getElementById('seaFreightTable'); tb.innerHTML='<tr><td>USD 환율</td><td>직접 입력</td><td colspan="2"><input id="usdRate" class="small-input" type="number" value="'+defaultUsd+'" min="0" step="0.01" oninput="calculate()"> KRW/USD</td></tr>'; seaItems.forEach((item,i)=>{const tr=document.createElement('tr'); tr.innerHTML='<td>'+item.name+'</td><td>max(<input class="small-input" type="number" value="'+item.rate+'" step="0.01" onchange="updateSeaRate('+i+',this.value)"> USD/CBM, 최소 '+item.min+' USD)</td><td id="seaUsd'+i+'"></td><td id="seaKrw'+i+'"></td>'; tb.appendChild(tr)})}
+function renderOrigin(){const tb=document.getElementById('originTable'); tb.innerHTML=''; if(originItems.length===0){tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:#64748b">Origin Charge 없음 또는 별도 확인</td></tr>';return} originItems.forEach((item,i)=>{const tr=document.createElement('tr'); let calc='고정비'; if(item.type==='perkg')calc='<input class="small-input" type="number" value="'+item.rate+'" step="0.01" onchange="updateOriginRate('+i+',this.value)"> '+currentCurrency+'/kg'; if(item.type==='perkg_min')calc='max(<input class="small-input" type="number" value="'+item.rate+'" step="0.01" onchange="updateOriginRate('+i+',this.value)"> '+currentCurrency+'/kg, 최소 '+item.min+' '+currentCurrency+')'; if(item.type==='perwm_min')calc='max(<input class="small-input" type="number" value="'+item.rate+'" step="0.01" onchange="updateOriginRate('+i+',this.value)"> '+currentCurrency+'/W/M, 최소 '+item.min+' '+currentCurrency+')'; if(item.type==='fixed_optional')calc='고정비 선택항목'; tr.innerHTML='<td>'+item.name+'</td><td>'+calc+'</td><td id="originAmt'+i+'"></td><td id="originKrw'+i+'"></td>'; tb.appendChild(tr)})}
+function renderDestAir(){document.getElementById('destTable').innerHTML='<tr><td>Handling Charge</td><td>고정비</td><td id="destHandling"></td></tr><tr><td>Charges Collect Fee</td><td>항공운임의 2%, 최소 25,000원</td><td id="destCollect"></td></tr><tr><td>Import Customs Clearance</td><td>고정비</td><td id="destCustoms"></td></tr>'}
+function renderDestSea(){document.getElementById('destTable').innerHTML='<tr><td>Import handling charge</td><td>고정비</td><td id="destImportHandling"></td></tr><tr><td>LCL Service charge</td><td>max(11,500원 × W/M, 최소 11,500원)</td><td id="destLcl"></td></tr><tr><td>Administration Fee / Drayage</td><td>max(17,000원 × W/M, 최소 68,000원)</td><td id="destDrayage"></td></tr><tr><td>Import Customs Clearance</td><td>고정비</td><td id="destCustoms"></td></tr><tr><td>Compliance Fee</td><td>고정비</td><td id="destCompliance"></td></tr><tr><td>Documentation / B/L Fee</td><td>고정비</td><td id="destDoc"></td></tr><tr><td>EDI Fee</td><td>고정비</td><td id="destEdi"></td></tr><tr><td>Advance Commission</td><td>관부가세 대납액의 2%</td><td id="destAdvance"></td></tr>'}
+function updateAirRate(i,v){airBrackets[i].rate=Number(v||0);calculate()} function updateSeaRate(i,v){seaItems[i].rate=Number(v||0);calculate()} function updateOriginRate(i,v){originItems[i].rate=Number(v||0);calculate()} function resetPreset(){applyRoutePreset()}
+function calculate(){if(mode==='air')calcAir();else calcSea()}
+function calcAir(){const w=Number(document.getElementById('weight').value||0), ex=Number(document.getElementById('exchangeRate').value||0), extra=Number(document.getElementById('extraKrw').value||0); const b=getAirBracket(w), min=airBrackets[0].rate, freight=Math.max(b.rate*w,min), freightKrw=freight*ex; airBrackets.forEach((x,i)=>{const r=document.getElementById('airRow'+i), s=document.getElementById('airSelected'+i); if(r){r.classList.remove('selected');s.textContent=''}}); const idx=airBrackets.indexOf(b); if(document.getElementById('airRow'+idx)){document.getElementById('airRow'+idx).classList.add('selected');document.getElementById('airSelected'+idx).textContent='적용'} if(min>0&&freight===min){document.getElementById('airRow0').classList.add('selected');document.getElementById('airSelected0').textContent='최소운임 적용'} let origin=0; originItems.forEach((it,i)=>{const amt=calcItem(it,w); origin+=amt; document.getElementById('originAmt'+i).textContent=money(amt,currentCurrency); document.getElementById('originKrw'+i).textContent=won(amt*ex)}); const originKrw=origin*ex; const destHandling=20000, destCollect=Math.max(freightKrw*.02,25000), destCustoms=20000, dest=destHandling+destCollect+destCustoms; document.getElementById('destHandling').textContent=won(destHandling); document.getElementById('destCollect').textContent=won(destCollect); document.getElementById('destCustoms').textContent=won(destCustoms); showTotals(originKrw,freightKrw,dest,extra,freight,w,currentCurrency,'kg')}
+function calcSea(){const cbm=Number(document.getElementById('cbm').value||0), wm=Number(document.getElementById('wm').value||0), ex=Number(document.getElementById('exchangeRate').value||0), usd=Number((document.getElementById('usdRate')||{}).value||0), duty=Number(document.getElementById('dutyTax').value||0), extra=Number(document.getElementById('extraKrw').value||0); let origin=0; originItems.forEach((it,i)=>{const qty=it.type==='perwm_min'?wm:1; const amt=calcItem(it,qty); origin+=amt; document.getElementById('originAmt'+i).textContent=money(amt,currentCurrency); document.getElementById('originKrw'+i).textContent=won(amt*ex)}); let seaUsd=0; seaItems.forEach((it,i)=>{const amt=calcItem(it,cbm); seaUsd+=amt; document.getElementById('seaUsd'+i).textContent=money(amt,'USD'); document.getElementById('seaKrw'+i).textContent=won(amt*usd)}); const originKrw=origin*ex, freightKrw=seaUsd*usd; const d1=50000,d2=Math.max(11500*wm,11500),d3=Math.max(17000*wm,68000),d4=20000,d5=3000,d6=40000,d7=5000,d8=duty*.02; const dest=d1+d2+d3+d4+d5+d6+d7+d8; document.getElementById('destImportHandling').textContent=won(d1); document.getElementById('destLcl').textContent=won(d2); document.getElementById('destDrayage').textContent=won(d3); document.getElementById('destCustoms').textContent=won(d4); document.getElementById('destCompliance').textContent=won(d5); document.getElementById('destDoc').textContent=won(d6); document.getElementById('destEdi').textContent=won(d7); document.getElementById('destAdvance').textContent=won(d8); showTotals(originKrw,freightKrw,dest,extra,seaUsd,cbm,'USD','CBM')}
+function showTotals(origin,freight,dest,extra,foreignFreight,qty,currency,unit){const grand=origin+freight+dest+extra; document.getElementById('originSum').textContent=won(origin); document.getElementById('freightSum').textContent=won(freight)+' ('+money(foreignFreight,currency)+')'; document.getElementById('destSum').textContent=won(dest); document.getElementById('extraSum').textContent=won(extra); document.getElementById('grandTotal').textContent=won(grand); document.getElementById('unitTotal').textContent=qty>0?unit+'당 '+won(grand/qty):unit+'당 ₩0'}
+function copySummary(){const text='수입 운임 예상 비용\n총액: '+document.getElementById('grandTotal').textContent+'\nOrigin: '+document.getElementById('originSum').textContent+'\nFreight: '+document.getElementById('freightSum').textContent+'\nDestination: '+document.getElementById('destSum').textContent+'\n기타: '+document.getElementById('extraSum').textContent+'\n'+document.getElementById('memo').value; navigator.clipboard.writeText(text).then(()=>alert('요약이 복사되었습니다.'))}
+['weight','cbm','wm','exchangeRate','extraKrw','dutyTax'].forEach(id=>{document.addEventListener('input',e=>{if(e.target.id===id)calculate()});document.addEventListener('change',e=>{if(e.target.id===id)calculate()})});
+renderRouteOptions();
+</script>
+</body>
+</html>
