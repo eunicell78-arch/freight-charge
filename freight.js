@@ -14,7 +14,7 @@
    ═══════════════════════════════════════════════════════════════ */
 (function (global) {
   'use strict';
-  var ENGINE_VERSION = '1.0';
+  var ENGINE_VERSION = '1.1';   // 1.1 (2026-11-09) 간편표시 — routes({simple:true})
   var BASE = (function () {
     try { var s = document.currentScript && document.currentScript.src; if (s) return s.replace(/[^\/]*(\?.*)?$/, ''); } catch (e) {}
     return 'https://eunicell78-arch.github.io/freight-charge/';
@@ -63,7 +63,7 @@
         code: code, label: s(r['노선명']) || code, currency: s(r['통화']) || 'TWD', exchange: n(r['기본환율']) || 1,
         minimum: n(r['최소운임']), minChg: n(r['최소청구중량']), density: n(r['추정밀도']),
         air: [0, n(r['-45']), n(r['+45']), n(r['+100']), n(r['+300']), n(r['+500']), n(r['+1000'])],
-        fsc: n(r['FSC']), ssc: n(r['SSC']), note: s(r['비고']), origin: []
+        fsc: n(r['FSC']), ssc: n(r['SSC']), note: s(r['비고']), short: s(r['간편표시']), origin: []
       };
       d.airOrder.push(code);
     });
@@ -76,7 +76,7 @@
       var code = s(r['노선코드']); if (!code || !validCode(code)) return;
       if (s(r['노선명'])) {
         d.sea[code] = { code: code, label: s(r['노선명']) || code, originCurrency: s(r['현지통화']) || 'CNY', originExchange: n(r['현지환율']) || 1,
-          freightCurrency: 'USD', freightExchange: n(r['USD환율']) || 1380, density: n(r['추정밀도']), note: s(r['비고']), origin: [], sea: [] };
+          freightCurrency: 'USD', freightExchange: n(r['USD환율']) || 1380, density: n(r['추정밀도']), note: s(r['비고']), short: s(r['간편표시']), origin: [], sea: [] };
         d.seaOrder.push(code); cur = code;
       }
       var key = cur || code;
@@ -231,12 +231,14 @@
   }
 
   /* ---------- 앱용 간편 함수 ---------- */
-  /* routes() → [{key:'dhl'|'air:HKG'|'sea:CNSZX', mode, code, label}] */
-  function routes() {
+  /* routes(opts) → [{key:'dhl'|'air:HKG'|'sea:CNSZX', mode, code, label}]
+     opts.simple=true → 엑셀 '간편표시'가 있는 노선만, 그 이름으로 (모의견적용). 간편표시가 하나도 없으면 전체 */
+  function routes(opts) {
     var d = st.data, out = []; if (!d) return out;
+    var simple = !!(opts && opts.simple) && (d.airOrder.some(function (c) { return d.air[c].short; }) || d.seaOrder.some(function (c) { return d.sea[c].short; }));
     if (d.dhl && d.dhl.length) out.push({ key: 'dhl', mode: 'dhl', code: '', label: 'DHL 특송' });
-    d.airOrder.forEach(function (c) { out.push({ key: 'air:' + c, mode: 'air', code: c, label: '항공 · ' + d.air[c].label }); });
-    d.seaOrder.forEach(function (c) { out.push({ key: 'sea:' + c, mode: 'sea', code: c, label: '해상 · ' + d.sea[c].label }); });
+    d.airOrder.forEach(function (c) { var p = d.air[c]; if (simple && !p.short) return; out.push({ key: 'air:' + c, mode: 'air', code: c, label: simple ? p.short : '항공 · ' + p.label }); });
+    d.seaOrder.forEach(function (c) { var p = d.sea[c]; if (simple && !p.short) return; out.push({ key: 'sea:' + c, mode: 'sea', code: c, label: simple ? p.short : '해상 · ' + p.label }); });
     return out;
   }
   /* quote(key, {gw, cbm, ex?, usd?, duty?}) — 환율 비우면 실시간 → 엑셀 기본환율 */
